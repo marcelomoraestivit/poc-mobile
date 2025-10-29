@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx cap init:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx cap:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx tauri init:*)",
+      "Bash(npm run dev:*)",
+      "Read(//mnt/c/poc/MobileBridgePOC/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

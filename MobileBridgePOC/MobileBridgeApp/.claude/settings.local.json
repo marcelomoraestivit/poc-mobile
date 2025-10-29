@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/poc/mobileBridgePOC/**)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(pkill:*)",
+      "Bash(netstat:*)",
+      "Bash(awk:*)",
+      "Bash(adb devices:*)",
+      "Read(//mnt/c/Users/**)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(./gradlew clean:*)",
+      "Bash(npm run build:*)",
+      "Bash(chmod:*)",
+      "Bash(test -f:*)",
+      "Bash(pod install)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
