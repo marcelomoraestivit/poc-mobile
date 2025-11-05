@@ -7,16 +7,29 @@ export class CartManager {
   private static instance: CartManager;
   private cart: CartItem[] = [];
   private listeners: Array<(cart: CartItem[]) => void> = [];
+  private loadPromise?: Promise<void>;
+  private isLoaded: boolean = false;
 
   private constructor() {
-    this.loadCart();
+    this.loadPromise = this.loadCart();
   }
 
   static getInstance(): CartManager {
     if (!CartManager.instance) {
+      console.error('🏭 [CartManager] Creating NEW CartManager instance!');
+      console.trace('🏭 Stack trace for getInstance:');
       CartManager.instance = new CartManager();
+    } else {
+      console.log('♻️ [CartManager] Reusing existing CartManager instance');
     }
     return CartManager.instance;
+  }
+
+  // Ensure cart is loaded before operations
+  private async ensureLoaded(): Promise<void> {
+    if (!this.isLoaded && this.loadPromise) {
+      await this.loadPromise;
+    }
   }
 
   subscribe(listener: (cart: CartItem[]) => void): () => void {
@@ -32,19 +45,28 @@ export class CartManager {
 
   private async loadCart() {
     try {
+      console.log('[CartManager] Loading cart from storage...');
       const cart = await SecureStorage.getObject<CartItem[]>(CART_STORAGE_KEY);
       if (cart) {
         this.cart = cart;
+        console.log('[CartManager] Cart loaded successfully:', cart.length, 'items, count:', this.getItemCount());
         this.notifyListeners();
+      } else {
+        console.log('[CartManager] No cart found in storage, starting with empty cart');
       }
+      this.isLoaded = true;
     } catch (error) {
       console.error('[CartManager] Error loading cart:', error);
+      this.isLoaded = true;
     }
   }
 
   private async saveCart() {
     try {
+      console.log('[CartManager] 💾 Saving cart to storage -', this.cart.length, 'items, count:', this.getItemCount());
       await SecureStorage.setObject(CART_STORAGE_KEY, this.cart);
+      console.log('[CartManager] 💾 Cart saved successfully');
+      console.log('[CartManager] 📢 Notifying', this.listeners.length, 'listeners');
       this.notifyListeners();
     } catch (error) {
       console.error('[CartManager] Error saving cart:', error);
@@ -100,8 +122,11 @@ export class CartManager {
   }
 
   async clear(): Promise<void> {
+    console.error('🗑️🗑️🗑️ [CartManager] CLEAR CALLED - Cart had', this.cart.length, 'items');
+    console.trace('[CartManager] STACK TRACE for clear:');
     this.cart = [];
     await this.saveCart();
+    console.error('🗑️ [CartManager] Cart cleared and saved');
   }
 
   getItems(): CartItem[] {
@@ -109,7 +134,10 @@ export class CartManager {
   }
 
   getItemCount(): number {
-    return this.cart.reduce((total, item) => total + item.quantity, 0);
+    const count = this.cart.reduce((total, item) => total + item.quantity, 0);
+    console.log('[CartManager] getItemCount called - returning:', count, 'items in cart:', this.cart.length, 'isLoaded:', this.isLoaded);
+    console.log('[CartManager] Cart contents:', JSON.stringify(this.cart.map(i => ({ id: i.productId, qty: i.quantity }))));
+    return count;
   }
 
   getTotal(): number {

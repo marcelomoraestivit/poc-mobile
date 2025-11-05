@@ -195,17 +195,6 @@ function App(): React.JSX.Element {
           </Text>
         </View>
 
-      <View style={styles.infoBox}>
-        <View style={styles.infoHeader}>
-          <Text style={styles.infoIconEmoji}>ℹ️</Text>
-          <Text style={styles.infoTitle}>Sobre este App</Text>
-        </View>
-        <Text style={styles.infoText}>
-          Este aplicativo demonstra a integração do MobileBridge em modo EMBEDDED,
-          permitindo comunicação bidirecional entre React Native e WebView.
-        </Text>
-      </View>
-
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() => handleNavigateToScreen('webview')}

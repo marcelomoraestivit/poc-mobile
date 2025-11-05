@@ -30,10 +30,58 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
   const [activeTab, setActiveTab] = useState('home');
   const [toast, setToast] = useState<ToastData | null>(null);
   const [isOnline, setIsOnline] = useState(true);
-  const [cartItemCount, setCartItemCount] = useState(0);
+  const [cartItemCount, setCartItemCountRaw] = useState(() => {
+    console.log('🎬 [Embedded] Initial cartItemCount state');
+    return 0;
+  });
+
+  // Wrapped setState with logging to catch ALL updates
+  const setCartItemCount = useCallback((value: number | ((prev: number) => number)) => {
+    const newValue = typeof value === 'function' ? value(cartItemCount) : value;
+    console.error('🚨🚨🚨 setCartItemCount CALLED with:', newValue);
+    console.error('🚨 Previous value was:', cartItemCount);
+    console.trace('🚨 STACK TRACE:');
+    setCartItemCountRaw(newValue);
+  }, [cartItemCount]);
   const [notificationShown, setNotificationShown] = useState(false);
   const webViewRef = useRef<WebView>(null);
+  const lastValidCartCount = useRef<number>(0); // Keep track of last valid count
   const bridge = MobileBridge;
+
+  // Track all cartItemCount changes
+  useEffect(() => {
+    console.log('🔄 [Embedded] cartItemCount STATE CHANGED TO:', cartItemCount);
+    console.trace('Stack trace for cartItemCount change');
+  }, [cartItemCount]);
+
+  // Safe function to update cart count - validates before setting
+  const updateCartCountSafely = useCallback((newCount: number, source: string) => {
+    console.log(`🛡️ [Embedded] updateCartCountSafely called - newCount: ${newCount}, source: ${source}`);
+    console.log(`🛡️ [Embedded] Current state: ${cartItemCount}, lastValid: ${lastValidCartCount.current}`);
+
+    // Special handling: WebView is the source of truth for cart in embedded mode
+    if (source === 'WebView.cartUpdated') {
+      console.log(`✅ [Embedded] ACCEPTED count=${newCount} from WebView (source of truth)`);
+      setCartItemCount(newCount);
+      lastValidCartCount.current = newCount;
+      return;
+    }
+
+    // For other sources, check if we should use lastValid instead
+    if (newCount === 0 && lastValidCartCount.current > 0) {
+      console.warn(`⚠️ [Embedded] REJECTED count=0 from ${source} - lastValid was ${lastValidCartCount.current}`);
+      console.warn(`⚠️ [Embedded] Keeping lastValid count: ${lastValidCartCount.current}`);
+      setCartItemCount(lastValidCartCount.current);
+      return;
+    }
+
+    // Otherwise accept the new count
+    console.log(`✅ [Embedded] ACCEPTED count=${newCount} from ${source}`);
+    setCartItemCount(newCount);
+    if (newCount > 0) {
+      lastValidCartCount.current = newCount;
+    }
+  }, [cartItemCount]);
 
   // Initialize Mobile Bridge handlers
   useEffect(() => {
@@ -44,7 +92,8 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     // Update cart count when cart changes
     const updateCartCount = () => {
       const count = cartManager.getItemCount();
-      setCartItemCount(count);
+      console.log('📢 [Embedded] updateCartCount called - count:', count);
+      updateCartCountSafely(count, 'CartManager.subscribe');
 
       // Notify WebView about cart count change
       // This ensures the TabBar inside WebView stays in sync
@@ -56,7 +105,13 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
         }
       }
     };
-    updateCartCount();
+
+    // Initial cart count update with delay to ensure cart is loaded
+    const initialTimer = setTimeout(() => {
+      console.log('📢 [Embedded] Initial cart count update...');
+      updateCartCount();
+    }, 200);
+
     const unsubCart = cartManager.subscribe(updateCartCount);
 
     // Navigation handler - navigate React web app via hash router
@@ -104,6 +159,9 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     // Cart handlers
     bridge.registerHandler('addToCart', async (payload) => {
       try {
+        console.error('🛒🛒🛒 addToCart HANDLER CALLED!');
+        console.error('🛒 Product:', payload.product?.name, 'Qty:', payload.quantity);
+        console.trace('🛒 Stack trace for addToCart:');
         const { product, quantity, selectedColor, selectedSize } = payload;
         await cartManager.addItem(product, quantity, selectedColor, selectedSize);
 
@@ -258,6 +316,8 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     });
 
     bridge.registerHandler('clearCart', async () => {
+      console.error('🗑️🗑️🗑️ clearCart HANDLER CALLED - About to clear cart!');
+      console.trace('🗑️ STACK TRACE for clearCart:');
       await cartManager.clear();
 
       // Notify web about cart update
@@ -342,10 +402,11 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     });
 
     return () => {
+      clearTimeout(initialTimer);
       unsubCart();
       bridge.clear();
     };
-  }, [isOnline]);
+  }, [isOnline, updateCartCountSafely]);
 
   // Handle messages from WebView (custom messages like cartUpdated)
   const handleMessage = useCallback(async (event: any) => {
@@ -368,20 +429,20 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
         // Handle Mobile Bridge format (with payload) or direct format (with data)
         const cartData = message.payload || message.data;
         const count = cartData?.count ?? cartData?.items?.length ?? 0;
-        
+
         if (typeof count === 'number' && count >= 0) {
           console.log('✅ [Embedded] Cart updated from web app! New count:', count);
-          console.log('✅ [Embedded] Setting cartItemCount to:', count);
-          setCartItemCount(count);
-          console.log('✅ [Embedded] cartItemCount state updated successfully');
-          
-          // Sync with CartManager
+
+          // Verify with CartManager before accepting the count
           const cartManager = CartManager.getInstance();
           const currentCount = cartManager.getItemCount();
+          console.log('🔍 [Embedded] Verifying cart count - WebView says:', count, 'CartManager says:', currentCount);
+
+          // Use safe update function
+          updateCartCountSafely(count, 'WebView.cartUpdated');
+
           if (currentCount !== count) {
             console.log('⚠️ [Embedded] Cart count mismatch - WebView:', count, 'Native CartManager:', currentCount);
-            // The WebView is the source of truth here, so we trust its count
-            // The CartManager will be updated when items are added via native handlers
           }
         } else {
           console.warn('⚠️ [Embedded] Cart update message received but count is invalid:', {
@@ -398,7 +459,7 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     } catch (error) {
       console.error('❌ [Embedded] Error handling message:', error);
     }
-  }, []);
+  }, [updateCartCountSafely]);
 
   const handleNetworkChange = async (online: boolean) => {
     setIsOnline(online);
@@ -481,14 +542,20 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
   // Sync cart count when component becomes visible (iOS fix)
   useEffect(() => {
     if (isVisible) {
-      const cartManager = CartManager.getInstance();
-      const currentCount = cartManager.getItemCount();
-      console.log('🔄 [Embedded] WebView became visible - syncing cart count:', currentCount);
+      // Add small delay to ensure CartManager is fully loaded
+      const timer = setTimeout(() => {
+        const cartManager = CartManager.getInstance();
+        const currentCount = cartManager.getItemCount();
+        console.log('🔄 [Embedded] WebView became visible - syncing cart count:', currentCount);
+        console.log('🔄 [Embedded] Current state cartItemCount before update:', cartItemCount);
 
-      // Always update to ensure sync, even if it looks the same
-      setCartItemCount(currentCount);
+        // Use safe update function
+        updateCartCountSafely(currentCount, 'isVisible.sync');
+      }, 100); // 100ms delay to allow async load to complete
+
+      return () => clearTimeout(timer);
     }
-  }, [isVisible]); // Only depend on isVisible to trigger sync when becoming visible
+  }, [isVisible, updateCartCountSafely, cartItemCount]); // Dependencies for sync
 
   // Simulate flash sale notification when component becomes visible (only once per session)
   // Note: In embedded mode, we assume the user is already authenticated
