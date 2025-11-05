@@ -478,6 +478,18 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     console.log('🛒 [Embedded] Cart tab badge will be:', badge);
   }, [cartItemCount]);
 
+  // Sync cart count when component becomes visible (iOS fix)
+  useEffect(() => {
+    if (isVisible) {
+      const cartManager = CartManager.getInstance();
+      const currentCount = cartManager.getItemCount();
+      console.log('🔄 [Embedded] WebView became visible - syncing cart count:', currentCount);
+
+      // Always update to ensure sync, even if it looks the same
+      setCartItemCount(currentCount);
+    }
+  }, [isVisible]); // Only depend on isVisible to trigger sync when becoming visible
+
   // Simulate flash sale notification when component becomes visible (only once per session)
   // Note: In embedded mode, we assume the user is already authenticated
   // since the host app (App.TestHost.tsx) handles authentication
@@ -495,7 +507,7 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
   }, [isVisible, notificationShown]); // Runs when isVisible becomes true AND notification hasn't been shown
 
   // Configure your web app URL here
-  const webAppUrl = 'http://localhost:5174';
+  const webAppUrl = 'http://10.0.2.2:5174';
 
   return (
     <SafeAreaProvider>

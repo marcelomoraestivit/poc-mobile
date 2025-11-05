@@ -614,7 +614,7 @@ function App(): React.JSX.Element {
   };
 
   // Use React web app running on localhost for POC
-  const webAppUrl = 'http://localhost:5174';
+  const webAppUrl = 'http://10.0.2.2:5174';
 
   // Mostrar loading enquanto verifica autenticação
   if (isCheckingAuth) {
