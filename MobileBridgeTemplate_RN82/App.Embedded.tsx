@@ -495,7 +495,7 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
   }, [isVisible, notificationShown]); // Runs when isVisible becomes true AND notification hasn't been shown
 
   // Configure your web app URL here
-  const webAppUrl = 'http://10.0.2.2:5174';
+  const webAppUrl = 'http://localhost:5174';
 
   return (
     <SafeAreaProvider>
