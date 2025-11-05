@@ -40,24 +40,8 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
     NetworkManager.initialize();
     SyncManager.initialize();
 
-    // Register native handlers for Mobile Bridge with offline support
-    MobileBridge.registerHandler('getDeviceInfo', async () => {
-      return await SyncManager.executeWithOffline(
-        'getDeviceInfo',
-        {},
-        async () => ({
-          platform: 'react-native',
-          timestamp: new Date().toISOString(),
-          userAgent: 'TurboNative',
-          isOnline: NetworkManager.isConnected(),
-        }),
-        {
-          cacheKey: 'deviceInfo',
-          useCache: true,
-          cacheDuration: 1000 * 60 * 5, // 5 minutes
-        }
-      );
-    });
+    // Note: 'getDeviceInfo' handler is registered in App.Embedded
+    // Removed duplicate registration to avoid conflicts
 
     MobileBridge.registerHandler('showAlert', async (payload: { message: string }) => {
       return await SyncManager.executeWithOffline(
@@ -119,6 +103,13 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
       return { synced: true };
     });
 
+    // Handler for cart updates from WebView
+    MobileBridge.registerHandler('cartUpdated', async (payload) => {
+      console.log('[TurboWebView] Cart updated from web:', payload);
+      // You can add additional logic here if needed (e.g., sync to backend)
+      return { success: true, received: true };
+    });
+
     return () => {
       MobileBridge.clear();
       NetworkManager.cleanup();
@@ -130,13 +121,30 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
     try {
       const data = JSON.parse(event.nativeEvent.data);
 
-      // Check if it's a custom message type (not a Mobile Bridge message)
-      // Custom messages don't have 'id' field or have types like 'test', 'cartUpdated', etc.
-      const isCustomMessage = !data.id || ['test', 'cartUpdated', 'wishlistUpdated'].includes(data.type);
+      // Validate that we have at least some data
+      if (!data || typeof data !== 'object') {
+        console.warn('[WebView] Received invalid message data:', data);
+        return;
+      }
 
-      if (isCustomMessage && onMessageProp) {
-        // Pass custom messages to parent handler
-        onMessageProp(event);
+      // Check if it's a custom message type (not a Mobile Bridge message)
+      // Custom messages can have 'id' (if sent via WebBridge.sendToNative) but have specific types
+      // Messages sent via WebBridge.sendToNative will have: {id, type, payload}
+      // Messages sent via postMessage directly will have: {type, data}
+      const customMessageTypes = ['test', 'cartUpdated', 'wishlistUpdated', 'imageError'];
+      const isCustomMessage = customMessageTypes.includes(data.type);
+
+      if (isCustomMessage) {
+        console.log('[TurboWebView] Custom message detected:', data.type, 'hasId:', !!data.id);
+        // Pass custom messages to parent handler if exists
+        // This allows the parent (App.tsx) to handle cartUpdated, etc.
+        if (onMessageProp) {
+          console.log('[TurboWebView] Forwarding custom message to parent handler');
+          onMessageProp(event);
+        } else {
+          console.warn('[TurboWebView] Custom message received but no parent handler:', data.type);
+        }
+        // Don't process as Mobile Bridge message
         return;
       }
 
@@ -146,11 +154,21 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
         return;
       }
 
+      // Validate Mobile Bridge message format
+      if (!data.id || !data.type) {
+        console.warn('[WebView] Received message missing required fields (id or type):', data);
+        return;
+      }
+
       // Handle message from web via Mobile Bridge
       const message = data as BridgeMessage;
       const response = await MobileBridge.handleMessage(message);
 
       // Send response back to web with sanitization
+      // Note: We need to send the response back because MobileBridge.handleMessage() only
+      // processes the message and returns the response object, it doesn't send it back to WebView.
+      // MobileBridge.sendToWeb() is used for NATIVE -> WEB messages (initiated by React Native).
+      // This flow is WEB -> NATIVE -> WEB (response to WebView's request).
       const { BridgeSecurity } = require('../utils/BridgeSecurity');
       const sanitized = BridgeSecurity.sanitizeForInjection(response);
 

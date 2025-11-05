@@ -49,30 +49,34 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   // Notify native app when cart changes
   useEffect(() => {
-    const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const notifyNative = async () => {
+      const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-    console.log('ShopApp: Cart changed, count:', cartCount, 'items:', cart.length);
-    console.log('ShopApp: window.ReactNativeWebView exists?', typeof window !== 'undefined' && !!(window as any).ReactNativeWebView);
+      console.log('ShopApp: Cart changed, count:', cartCount, 'items:', cart.length);
 
-    // Check if we're running in a WebView with Mobile Bridge
-    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-      try {
-        const message = {
-          type: 'cartUpdated',
-          data: {
+      // Check if we're running in a WebView with Mobile Bridge
+      if (typeof window !== 'undefined' && (window as any).WebBridge) {
+        try {
+          const cartData = {
             count: cartCount,
-            items: cart.length
-          }
-        };
-        console.log('ShopApp: Sending message to native:', message);
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify(message));
-        console.log('ShopApp: Message sent successfully!');
-      } catch (error) {
-        console.error('ShopApp: Error notifying native app:', error);
+            items: cart.length,
+            total: getCartTotal()
+          };
+          console.log('ShopApp: Notifying native via WebBridge:', cartData);
+
+          // Use WebBridge API (correct way) instead of postMessage directly
+          await (window as any).WebBridge.sendToNative('cartUpdated', cartData);
+
+          console.log('ShopApp: Native notified successfully!');
+        } catch (error) {
+          console.error('ShopApp: Error notifying native app:', error);
+        }
+      } else {
+        console.log('ShopApp: WebBridge not available, running in browser');
       }
-    } else {
-      console.log('ShopApp: ReactNativeWebView not available, running in browser');
-    }
+    };
+
+    notifyNative();
   }, [cart]);
 
   const addToCart = (product: Product, quantity = 1, selectedColor?: string, selectedSize?: string) => {

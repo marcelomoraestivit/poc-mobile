@@ -107,3 +107,66 @@ MobileBridgeTemplate_RN82/
 ├── android/                 # Projeto Android nativo
 ├── ios/                     # Projeto iOS nativo
 └── App.tsx                  # Componente raiz
+## 🎨 Modos de Operação
+
+Este template oferece dois modos de operação:
+
+### Modo Full (Padrão)
+- **Arquivo:** `App.tsx`
+- **Características:** WebView + TabBar de navegação nativa
+- **Ideal para:** Apps standalone com navegação híbrida
+
+### Modo Embedded (Fullscreen)
+- **Arquivo:** `App.Embedded.tsx`
+- **Características:** WebView em tela cheia, sem TabBar
+- **Ideal para:** Integração em outro app ou quando toda navegação é web
+
+**Alternar entre modos:**
+```bash
+npm run mode:full      # Ativa modo full
+npm run mode:embedded  # Ativa modo embedded
+```
+
+### Modo Test Host (Demo de Integração)
+- **Arquivo:** `App.TestHost.tsx`
+- **Características:** App demo com navegação entre telas nativas e WebView embedded
+- **Ideal para:** Testar a integração, ver exemplo completo, demonstrações
+
+📖 **Documentação completa:** [EMBEDDED_MODE.md](./docs/EMBEDDED_MODE.md)
+
+
+## 🔍 Qual Modo Está Ativo?
+
+**Por padrão, o template está em MODO FULL** (com TabBar).
+
+Para verificar qual modo está ativo, veja o arquivo `index.js`:
+- Se importa `./App` → **Modo FULL** (com TabBar) ✅
+- Se importa `./App.Embedded` → **Modo EMBEDDED** (fullscreen)
+
+**Comando rápido para verificar:**
+```bash
+cat index.js | grep "import App"
+```
+
+**Importante:** Quando você executa `npm run android`, o modo que será usado é o que estiver configurado no `index.js` naquele momento.
+
+📖 Mais detalhes: [MODO_ATUAL.md](./MODO_ATUAL.md)
+
+
+## 🧪 Modo Test Host - Testar Integração
+
+Quer ver como o WebView embedded funciona dentro de um app maior? Use o modo test host:
+
+```bash
+npm run mode:testhost
+```
+
+Este modo demonstra:
+- ✅ App React Native com múltiplas telas nativas
+- ✅ WebView embedded integrado naturalmente
+- ✅ Navegação entre telas nativas e WebView
+- ✅ Como esconder/mostrar elementos nativos
+
+**Guia rápido:** [COMO_TESTAR.md](./COMO_TESTAR.md)  
+**Documentação completa:** [docs/TESTHOST_MODE.md](./docs/TESTHOST_MODE.md)
+

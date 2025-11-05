@@ -9,6 +9,8 @@
  */
 
 import { SecureStorage } from '../storage/SecureStorage';
+import { JWTGenerator } from '../utils/JWTGenerator';
+import { Logger } from '../utils/Logger';
 
 export interface User {
   id: string;
@@ -41,12 +43,16 @@ export class AuthService {
 
       // Check if tokens are still valid
       if (this.tokens && this.isTokenExpired()) {
-        await this.refreshTokens();
+        Logger.log('[Auth] Token expired on initialization - performing silent logout');
+        await this.logout();
+        return; // Exit early after logout
       }
 
-      console.log('[Auth] Service initialized, user:', this.currentUser?.email);
+      Logger.log('[Auth] Service initialized, user:', this.currentUser?.email);
     } catch (error) {
-      console.error('[Auth] Initialization error:', error);
+      Logger.error('[Auth] Initialization error:', error);
+      // Silent logout on initialization errors
+      await this.logout();
     }
   }
 
@@ -62,27 +68,47 @@ export class AuthService {
       // const response = await api.post('/auth/login', { email, password });
       // const { user, tokens } = response.data;
 
-      // Mock implementation
+      // Validação simples de credenciais (usuário de teste)
+      const TEST_USERS = [
+        { email: 'usuario@teste.com', password: 'senha123', name: 'Usuário Teste' },
+        { email: 'admin@teste.com', password: 'admin123', name: 'Admin Teste' },
+      ];
+
+      const testUser = TEST_USERS.find(
+        u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+      );
+
+      if (!testUser) {
+        throw new Error('Credenciais inválidas');
+      }
+
+      // Criar usuário
+      const userId = `user_${Date.now()}`;
       const user: User = {
-        id: 'user_123',
-        email,
-        name: email.split('@')[0],
+        id: userId,
+        email: testUser.email,
+        name: testUser.name,
         emailVerified: true,
         createdAt: new Date().toISOString(),
       };
 
+      // Gerar JWT tokens reais
+      const accessToken = JWTGenerator.generateToken(userId, testUser.email, testUser.name, 1 / 60); // 1 minuto
+      const refreshToken = JWTGenerator.generateRefreshToken(userId, testUser.email, testUser.name); // 7 dias
+
       const tokens: AuthTokens = {
-        accessToken: 'mock_access_token',
-        refreshToken: 'mock_refresh_token',
-        expiresAt: Date.now() + 3600000, // 1 hour
+        accessToken,
+        refreshToken,
+        expiresAt: Date.now() + 60 * 1000, // 1 minuto
       };
 
       await this.setAuth(user, tokens);
 
-      console.log('[Auth] Login successful:', user.email);
+      Logger.log('[Auth] Login successful:', user.email);
+      Logger.debug('[Auth] JWT Token:', accessToken);
       return user;
     } catch (error) {
-      console.error('[Auth] Login error:', error);
+      Logger.error('[Auth] Login error:', error);
       throw new Error('Login failed: ' + (error as Error).message);
     }
   }
@@ -121,10 +147,10 @@ export class AuthService {
 
       await this.setAuth(user, tokens);
 
-      console.log('[Auth] Google login successful');
+      Logger.log('[Auth] Google login successful');
       return user;
     } catch (error) {
-      console.error('[Auth] Google login error:', error);
+      Logger.error('[Auth] Google login error:', error);
       throw new Error('Google login failed');
     }
   }
@@ -159,10 +185,10 @@ export class AuthService {
 
       await this.setAuth(user, tokens);
 
-      console.log('[Auth] Registration successful:', user.email);
+      Logger.log('[Auth] Registration successful:', user.email);
       return user;
     } catch (error) {
-      console.error('[Auth] Registration error:', error);
+      Logger.error('[Auth] Registration error:', error);
       throw new Error('Registration failed');
     }
   }
@@ -186,43 +212,38 @@ export class AuthService {
       // Notify listeners
       this.notifyListeners(null);
 
-      console.log('[Auth] Logout successful');
+      Logger.log('[Auth] Logout successful');
     } catch (error) {
-      console.error('[Auth] Logout error:', error);
+      Logger.error('[Auth] Logout error:', error);
       throw error;
     }
   }
 
   /**
    * Refresh access token
+   * In mock mode, this just performs a silent logout
    */
   static async refreshTokens(): Promise<void> {
     try {
       if (!this.tokens?.refreshToken) {
-        throw new Error('No refresh token available');
+        Logger.log('[Auth] No refresh token - performing silent logout');
+        await this.logout();
+        return;
       }
 
-      // TODO: Implement token refresh
+      // TODO: Implement token refresh with real backend
       // const response = await api.post('/auth/refresh', {
       //   refreshToken: this.tokens.refreshToken,
       // });
       // const { tokens } = response.data;
 
-      // Mock implementation
-      const tokens: AuthTokens = {
-        accessToken: 'mock_refreshed_access_token',
-        refreshToken: this.tokens.refreshToken,
-        expiresAt: Date.now() + 3600000,
-      };
-
-      this.tokens = tokens;
-      await SecureStorage.setObject('tokens', tokens);
-
-      console.log('[Auth] Tokens refreshed');
-    } catch (error) {
-      console.error('[Auth] Token refresh error:', error);
+      // For mock mode, we don't implement auto-refresh
+      // Just perform silent logout when token expires
+      Logger.log('[Auth] Token expired - performing silent logout (mock mode)');
       await this.logout();
-      throw error;
+    } catch (error) {
+      Logger.log('[Auth] Token refresh error - performing silent logout');
+      await this.logout();
     }
   }
 
@@ -246,9 +267,11 @@ export class AuthService {
   static async getAccessToken(): Promise<string | null> {
     if (!this.tokens) return null;
 
-    // Refresh if expired
+    // Check if expired - in mock mode, just return null and logout
     if (this.isTokenExpired()) {
-      await this.refreshTokens();
+      Logger.log('[Auth] Token expired - performing silent logout');
+      await this.logout();
+      return null;
     }
 
     return this.tokens.accessToken;
@@ -290,7 +313,7 @@ export class AuthService {
         this.tokens = tokens;
       }
     } catch (error) {
-      console.error('[Auth] Load saved auth error:', error);
+      Logger.error('[Auth] Load saved auth error:', error);
     }
   }
 
@@ -323,9 +346,9 @@ export class AuthService {
       // TODO: Implement password reset
       // await api.post('/auth/reset-password', { email });
 
-      console.log('[Auth] Password reset email sent to:', email);
+      Logger.log('[Auth] Password reset email sent to:', email);
     } catch (error) {
-      console.error('[Auth] Send password reset error:', error);
+      Logger.error('[Auth] Send password reset error:', error);
       throw error;
     }
   }
@@ -351,10 +374,10 @@ export class AuthService {
 
       this.notifyListeners(updatedUser);
 
-      console.log('[Auth] Profile updated');
+      Logger.log('[Auth] Profile updated');
       return updatedUser;
     } catch (error) {
-      console.error('[Auth] Update profile error:', error);
+      Logger.error('[Auth] Update profile error:', error);
       throw error;
     }
   }
@@ -383,7 +406,7 @@ export class AuthService {
 
       return false;
     } catch (error) {
-      console.error('[Auth] Enable biometric error:', error);
+      Logger.error('[Auth] Enable biometric error:', error);
       return false;
     }
   }
@@ -405,7 +428,7 @@ export class AuthService {
 
       return false;
     } catch (error) {
-      console.error('[Auth] Biometric auth error:', error);
+      Logger.error('[Auth] Biometric auth error:', error);
       return false;
     }
   }

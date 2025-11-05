@@ -28,6 +28,24 @@ interface TabBarProps {
 const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId }) => {
   const insets = useSafeAreaInsets();
 
+  // Debug: Log badge values
+  React.useEffect(() => {
+    console.log('📊 [TabBar] Component mounted/updated');
+    console.log('📊 [TabBar] Tabs received:', tabs.length);
+    console.log('📊 [TabBar] Active tab:', activeTabId);
+    const cartTab = tabs.find(tab => tab.id === 'cart');
+    if (cartTab) {
+      console.log('📊 [TabBar] Cart tab badge value:', cartTab.badge);
+      console.log('📊 [TabBar] All tabs:', tabs.map(t => ({ id: t.id, badge: t.badge, label: t.label })));
+    }
+  }, [tabs, activeTabId]);
+
+  if (!tabs || tabs.length === 0) {
+    console.warn('⚠️ [TabBar] No tabs provided!');
+    return null;
+  }
+
+  console.log('📊 [TabBar] Rendering TabBar with', tabs.length, 'tabs');
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       {tabs.map((tab) => {
@@ -66,6 +84,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     paddingTop: 8,
+    zIndex: 1000,
+    elevation: 8, // Android shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   tab: {
     flex: 1,
@@ -89,13 +113,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -8,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#E03131',
     borderRadius: 10,
     minWidth: 18,
     height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   badgeText: {
     color: '#fff',

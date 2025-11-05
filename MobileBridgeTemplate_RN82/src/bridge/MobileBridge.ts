@@ -50,6 +50,27 @@ class MobileBridge {
    * Handle incoming messages from WebView with security validation
    */
   async handleMessage(message: BridgeMessage): Promise<BridgeResponse> {
+    // Basic structure validation before security checks
+    if (!message || typeof message !== 'object') {
+      console.error('[Bridge] Invalid message structure: not an object');
+      return {
+        id: 'unknown',
+        success: false,
+        error: 'Invalid message structure',
+        timestamp: Date.now(),
+      };
+    }
+
+    if (!message.id || !message.type) {
+      console.error('[Bridge] Invalid message: Missing required fields (id, type)');
+      return {
+        id: message.id || 'unknown',
+        success: false,
+        error: 'Missing required fields (id, type)',
+        timestamp: Date.now(),
+      };
+    }
+
     // Validate message structure and security
     const validation = BridgeSecurity.validateMessage(message);
     if (!validation.valid) {

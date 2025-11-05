@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Platform, Alert } from 'react-native';
+import { View, StyleSheet, Platform, Alert, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabBar, { TabItem } from './src/components/TabBar';
 import TurboWebView from './src/components/TurboWebView';
@@ -14,6 +14,8 @@ import MobileBridge from './src/bridge/MobileBridge';
 import { CartManager } from './src/store/CartManager';
 import { WishlistManager } from './src/store/WishlistManager';
 import { NotificationService } from './src/services/NotificationService';
+import { AuthService } from './src/services/AuthService';
+import LoginScreen from './src/screens/LoginScreen';
 
 interface ToastData {
   message: string;
@@ -26,8 +28,42 @@ function App(): React.JSX.Element {
   const [cartItemCount, setCartItemCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const webViewRef = useRef<any>(null);
   const bridge = MobileBridge;
+
+  // Verificar autenticação ao iniciar
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await AuthService.initialize();
+        const authenticated = AuthService.isAuthenticated();
+        console.log('[App] Auth status:', authenticated);
+        setIsAuthenticated(authenticated);
+
+        if (authenticated) {
+          const user = AuthService.getCurrentUser();
+          console.log('[App] User authenticated:', user?.email);
+        }
+      } catch (error) {
+        console.error('[App] Auth check error:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Listener para mudanças de autenticação
+  useEffect(() => {
+    const unsubscribe = AuthService.addListener((user) => {
+      setIsAuthenticated(user !== null);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Initialize Mobile Bridge handlers
   useEffect(() => {
@@ -108,17 +144,67 @@ function App(): React.JSX.Element {
         return { success: true };
       } catch (error) {
         console.error('Error adding to cart:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
       }
     });
 
     bridge.registerHandler('removeFromCart', async (payload) => {
       try {
-        const { productId, selectedColor, selectedSize } = payload;
-        await cartManager.removeItem(productId, selectedColor, selectedSize);
-        return { success: true };
+        const { productId, selectedColor, selectedSize, itemId } = payload;
+        
+        console.log('🛒 [App.tsx] Removing item from cart:', { productId, selectedColor, selectedSize, itemId });
+        
+        // If itemId is provided, remove by itemId (more specific)
+        // Otherwise use productId + color + size
+        if (itemId) {
+          // Remove by itemId - find the item first
+          const items = cartManager.getItems();
+          const itemToRemove = items.find(item => item.productId === itemId || item.product?.id === itemId);
+          if (itemToRemove) {
+            await cartManager.removeItem(
+              itemToRemove.productId,
+              itemToRemove.selectedColor,
+              itemToRemove.selectedSize
+            );
+          } else {
+            console.warn('⚠️ [App.tsx] Item not found with itemId:', itemId);
+            // Fallback: try to remove by productId only
+            await cartManager.removeItem(productId || itemId, selectedColor, selectedSize);
+          }
+        } else {
+          await cartManager.removeItem(productId, selectedColor, selectedSize);
+        }
+
+        // Notify web about cart update
+        const cart = {
+          items: cartManager.getItems(),
+          count: cartManager.getItemCount(),
+          total: cartManager.getTotal()
+        };
+
+        if (webViewRef.current) {
+          const script = `
+            (function() {
+              if (window.WebBridge && window.WebBridge.emit) {
+                window.WebBridge.emit('cartUpdated', ${JSON.stringify(cart)});
+              }
+              // Also send via postMessage for compatibility
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'cartUpdated',
+                  data: ${JSON.stringify(cart)}
+                }));
+              }
+            })();
+          `;
+          webViewRef.current.injectJavaScript(script);
+        }
+
+        console.log('✅ [App.tsx] Item removed from cart. New count:', cart.count, 'Items:', cart.items.length);
+        return { success: true, cart: cart.items };
       } catch (error) {
-        return { success: false, error: error.message };
+        console.error('❌ [App.tsx] Error removing from cart:', error);
+        return { success: false, error: (error as Error).message };
       }
     });
 
@@ -126,9 +212,36 @@ function App(): React.JSX.Element {
       try {
         const { productId, quantity, selectedColor, selectedSize } = payload;
         await cartManager.updateQuantity(productId, quantity, selectedColor, selectedSize);
-        return { success: true };
+
+        // Notify web about cart update
+        if (webViewRef.current) {
+          const cart = {
+            items: cartManager.getItems(),
+            count: cartManager.getItemCount(),
+            total: cartManager.getTotal()
+          };
+          const script = `
+            (function() {
+              if (window.WebBridge && window.WebBridge.emit) {
+                window.WebBridge.emit('cartUpdated', ${JSON.stringify(cart)});
+              }
+              // Also send via postMessage for compatibility
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'cartUpdated',
+                  data: ${JSON.stringify(cart)}
+                }));
+              }
+            })();
+          `;
+          webViewRef.current.injectJavaScript(script);
+        }
+
+        console.log('✅ [App.tsx] Cart quantity updated. New count:', cartManager.getItemCount());
+        return { success: true, cart: cartManager.getItems() };
       } catch (error) {
-        return { success: false, error: error.message };
+        console.error('❌ [App.tsx] Error updating cart quantity:', error);
+        return { success: false, error: (error as Error).message };
       }
     });
 
@@ -144,6 +257,32 @@ function App(): React.JSX.Element {
 
     bridge.registerHandler('clearCart', async () => {
       await cartManager.clear();
+
+      // Notify web about cart update
+      if (webViewRef.current) {
+        const cart = {
+          items: [],
+          count: 0,
+          total: 0
+        };
+        const script = `
+          (function() {
+            if (window.WebBridge && window.WebBridge.emit) {
+              window.WebBridge.emit('cartUpdated', ${JSON.stringify(cart)});
+            }
+            // Also send via postMessage for compatibility
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'cartUpdated',
+                data: ${JSON.stringify(cart)}
+              }));
+            }
+          })();
+        `;
+        webViewRef.current.injectJavaScript(script);
+      }
+
+      console.log('✅ [App.tsx] Cart cleared');
       return { success: true };
     });
 
@@ -185,7 +324,7 @@ function App(): React.JSX.Element {
 
         return { inWishlist };
       } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
       }
     });
 
@@ -219,7 +358,7 @@ function App(): React.JSX.Element {
 
         return { success: true, orderId };
       } catch (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: (error as Error).message };
       }
     });
 
@@ -262,10 +401,28 @@ function App(): React.JSX.Element {
       };
     });
 
-    // Simulate flash sale notification
-    setTimeout(() => {
-      notificationService.simulateFlashSaleNotification();
-    }, 5000);
+    // Auth handlers
+    bridge.registerHandler('getAuthToken', async () => {
+      const token = await AuthService.getAccessToken();
+      const user = AuthService.getCurrentUser();
+      return {
+        token,
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        } : null,
+      };
+    });
+
+    bridge.registerHandler('logout', async () => {
+      try {
+        await AuthService.logout();
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    });
 
     return () => {
       unsubCart();
@@ -275,9 +432,9 @@ function App(): React.JSX.Element {
   // Handle messages from WebView
   const handleMessage = useCallback(async (event: any) => {
     try {
-      console.log('Received message from WebView:', event.nativeEvent.data);
+      console.log('📨 [App.tsx] Received raw message from WebView:', event.nativeEvent.data);
       const message = JSON.parse(event.nativeEvent.data);
-      console.log('Parsed message:', message);
+      console.log('📨 [App.tsx] Parsed message:', JSON.stringify(message, null, 2));
 
       // Handle image error messages
       if (message.type === 'imageError') {
@@ -292,10 +449,40 @@ function App(): React.JSX.Element {
       }
 
       // Handle cart update notifications from web app
+      // Check both direct format {type: 'cartUpdated', data: {...}} and Mobile Bridge format {id, type, payload: {...}}
       if (message.type === 'cartUpdated') {
-        console.log('✅ Cart updated from web app! New count:', message.data.count);
-        setCartItemCount(message.data.count);
-        console.log('✅ cartItemCount state updated to:', message.data.count);
+        console.log('🛒 [App.tsx] Cart update message detected!');
+        console.log('🛒 [App.tsx] Message structure:', {
+          hasId: !!message.id,
+          hasData: !!message.data,
+          hasPayload: !!message.payload,
+          type: message.type
+        });
+        
+        // Handle Mobile Bridge format (with payload)
+        const cartData = message.payload || message.data;
+        const count = cartData?.count ?? cartData?.items?.length ?? 0;
+        
+        if (typeof count === 'number' && count >= 0) {
+          console.log('✅ [App.tsx] Cart updated from web app! New count:', count);
+          console.log('✅ [App.tsx] Setting cartItemCount to:', count);
+          setCartItemCount(count);
+          console.log('✅ [App.tsx] cartItemCount state updated successfully');
+          
+          // Also sync with CartManager if available
+          const cartManager = CartManager.getInstance();
+          const currentCount = cartManager.getItemCount();
+          if (currentCount !== count) {
+            console.log('⚠️ [App.tsx] Cart count mismatch - WebView:', count, 'Native CartManager:', currentCount);
+          }
+        } else {
+          console.warn('⚠️ [App.tsx] Cart update message received but count is invalid:', {
+            count,
+            cartData,
+            messageData: message.data,
+            messagePayload: message.payload
+          });
+        }
         return;
       }
 
@@ -351,49 +538,109 @@ function App(): React.JSX.Element {
   };
 
   // Tab configuration
-  const tabs: TabItem[] = [
-    {
-      id: 'home',
-      label: 'Início',
-      icon: '⌂',
-      onPress: () => {
-        setActiveTab('home');
-        navigateWebApp('/');
+  const tabs: TabItem[] = React.useMemo(() => {
+    const tabItems: TabItem[] = [
+      {
+        id: 'home',
+        label: 'Início',
+        icon: '⌂',
+        onPress: () => {
+          setActiveTab('home');
+          navigateWebApp('/');
+        },
       },
-    },
-    {
-      id: 'search',
-      label: 'Buscar',
-      icon: '⌕',
-      onPress: () => {
-        setActiveTab('search');
-        navigateWebApp('/search');
+      {
+        id: 'search',
+        label: 'Buscar',
+        icon: '⌕',
+        onPress: () => {
+          setActiveTab('search');
+          navigateWebApp('/search');
+        },
       },
-    },
-    {
-      id: 'wishlist',
-      label: 'Favoritos',
-      icon: '♡',
-      onPress: () => {
-        setActiveTab('wishlist');
-        navigateWebApp('/wishlist');
+      {
+        id: 'wishlist',
+        label: 'Favoritos',
+        icon: '♡',
+        onPress: () => {
+          setActiveTab('wishlist');
+          navigateWebApp('/wishlist');
+        },
       },
-    },
-    {
-      id: 'cart',
-      label: 'Carrinho',
-      icon: '⊞',
-      badge: cartItemCount > 0 ? cartItemCount.toString() : undefined,
-      onPress: () => {
-        setActiveTab('cart');
-        navigateWebApp('/cart');
+      {
+        id: 'cart',
+        label: 'Carrinho',
+        icon: '⊞',
+        badge: cartItemCount > 0 ? cartItemCount.toString() : undefined,
+        onPress: () => {
+          setActiveTab('cart');
+          navigateWebApp('/cart');
+        },
       },
-    },
-  ];
+    ];
+    
+    console.log('📱 [App.tsx] Tabs configured:', tabItems.map(t => ({ id: t.id, badge: t.badge })));
+    return tabItems;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartItemCount]);
+
+  // Debug: Log cart count changes
+  useEffect(() => {
+    console.log('🛒 [App.tsx] Cart item count changed:', cartItemCount);
+    const badge = cartItemCount > 0 ? cartItemCount.toString() : undefined;
+    console.log('🛒 [App.tsx] Cart tab badge will be:', badge);
+  }, [cartItemCount]);
+
+  // Simulate flash sale notification after user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const notificationService = NotificationService.getInstance();
+      const timer = setTimeout(() => {
+        notificationService.simulateFlashSaleNotification();
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
+
+  // Handler de login bem-sucedido
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setToast({
+      title: 'Bem-vindo!',
+      message: 'Login realizado com sucesso',
+      type: 'success',
+    });
+  };
 
   // Use React web app running on localhost for POC
   const webAppUrl = 'http://10.0.2.2:5174';
 
+  // Mostrar loading enquanto verifica autenticação
+  if (isCheckingAuth) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Verificando autenticação...</Text>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Mostrar tela de login se não estiver autenticado
+  if (!isAuthenticated) {
+    console.log('[App] Showing login screen');
+    return (
+      <SafeAreaProvider>
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      </SafeAreaProvider>
+    );
+  }
+
+  console.log('[App] Rendering main app with WebView');
+
+  // Mostrar app principal se autenticado
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
@@ -404,8 +651,11 @@ function App(): React.JSX.Element {
             ref={webViewRef}
             source={{ uri: webAppUrl }}
             onMessage={handleMessage}
-            onLoad={() => console.log('WebView loaded React App:', webAppUrl)}
-            onError={(event) => console.error('WebView error:', event.nativeEvent)}
+            onLoadStart={() => console.log('[WebView] Load started:', webAppUrl)}
+            onLoad={() => console.log('[WebView] Load completed:', webAppUrl)}
+            onLoadEnd={() => console.log('[WebView] Load ended')}
+            onError={(event) => console.error('[WebView] ERROR:', event.nativeEvent)}
+            onHttpError={(event) => console.error('[WebView] HTTP ERROR:', event.nativeEvent)}
           />
         </View>
 
@@ -432,6 +682,17 @@ const styles = StyleSheet.create({
   },
   webViewContainer: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6b7280',
   },
 });
 

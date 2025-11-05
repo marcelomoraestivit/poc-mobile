@@ -33,7 +33,7 @@ export default function CartPage() {
   const shipping = getShippingCost();
   const total = getFinalTotal();
 
-  const handleRemoveItem = (productId: string) => {
+  const handleRemoveItem = (productId: string, selectedColor?: string, selectedSize?: string) => {
     modals.openConfirmModal({
       title: 'Remover item',
       children: (
@@ -41,7 +41,7 @@ export default function CartPage() {
       ),
       labels: { confirm: 'Remover', cancel: 'Cancelar' },
       confirmProps: { color: 'dark' },
-      onConfirm: () => removeFromCart(productId),
+      onConfirm: () => removeFromCart(productId, selectedColor, selectedSize),
     });
   };
 
@@ -178,7 +178,7 @@ export default function CartPage() {
                         variant="light"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRemoveItem(item.productId);
+                          handleRemoveItem(item.productId, item.selectedColor, item.selectedSize);
                         }}
                       >
                         <IconTrash size={16} />

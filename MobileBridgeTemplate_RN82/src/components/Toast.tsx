@@ -6,7 +6,8 @@ interface ToastProps {
   title?: string;
   type: 'success' | 'error' | 'info' | 'warning';
   duration?: number;
-  onHide: () => void;
+  onHide?: () => void;
+  onDismiss?: () => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -18,7 +19,7 @@ const COLORS = {
   warning: { bg: '#f59e0b', icon: '⚠' },
 };
 
-export default function Toast({ message, title, type, duration = 3000, onHide }: ToastProps) {
+export default function Toast({ message, title, type, duration = 3000, onHide, onDismiss }: ToastProps) {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-100));
 
@@ -52,12 +53,17 @@ export default function Toast({ message, title, type, duration = 3000, onHide }:
           useNativeDriver: true,
         }),
       ]).start(() => {
-        onHide();
+        // Call onDismiss (preferred) or onHide (legacy) if provided
+        if (onDismiss) {
+          onDismiss();
+        } else if (onHide) {
+          onHide();
+        }
       });
     }, duration);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [onDismiss, onHide]);
 
   const color = COLORS[type];
 
