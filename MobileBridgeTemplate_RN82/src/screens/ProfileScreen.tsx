@@ -29,9 +29,10 @@ const COLORS = {
 
 interface ProfileScreenProps {
   onBack: () => void;
+  onNavigateToWebView?: () => void;
 }
 
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onNavigateToWebView }) => {
   const user = AuthService.getCurrentUser();
 
   return (
@@ -99,6 +100,17 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
             </View>
           </View>
         </View>
+
+        {/* Botão para WebView (se disponível) */}
+        {onNavigateToWebView && (
+          <TouchableOpacity
+            style={styles.webViewButton}
+            onPress={onNavigateToWebView}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.webViewButtonText}>🛒 Ver Loja (WebView)</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -223,6 +235,20 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     color: COLORS.textSecondary,
+  },
+  webViewButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  webViewButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

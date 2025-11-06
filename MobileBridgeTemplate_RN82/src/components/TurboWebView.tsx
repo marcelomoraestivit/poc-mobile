@@ -135,11 +135,9 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
       const isCustomMessage = customMessageTypes.includes(data.type);
 
       if (isCustomMessage) {
-        console.log('[TurboWebView] Custom message detected:', data.type, 'hasId:', !!data.id);
         // Pass custom messages to parent handler if exists
         // This allows the parent (App.tsx) to handle cartUpdated, etc.
         if (onMessageProp) {
-          console.log('[TurboWebView] Forwarding custom message to parent handler');
           onMessageProp(event);
         } else {
           console.warn('[TurboWebView] Custom message received but no parent handler:', data.type);

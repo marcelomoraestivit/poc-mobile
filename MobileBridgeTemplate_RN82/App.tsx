@@ -39,12 +39,10 @@ function App(): React.JSX.Element {
       try {
         await AuthService.initialize();
         const authenticated = AuthService.isAuthenticated();
-        console.log('[App] Auth status:', authenticated);
         setIsAuthenticated(authenticated);
 
         if (authenticated) {
           const user = AuthService.getCurrentUser();
-          console.log('[App] User authenticated:', user?.email);
         }
       } catch (error) {
         console.error('[App] Auth check error:', error);
@@ -110,7 +108,6 @@ function App(): React.JSX.Element {
       if (webViewRef.current) {
         const script = `
           (function() {
-            console.log('Bridge navigating to:', '${route}');
             window.location.hash = '${route}';
           })();
         `;
@@ -151,9 +148,7 @@ function App(): React.JSX.Element {
     bridge.registerHandler('removeFromCart', async (payload) => {
       try {
         const { productId, selectedColor, selectedSize, itemId } = payload;
-        
-        console.log('🛒 [App.tsx] Removing item from cart:', { productId, selectedColor, selectedSize, itemId });
-        
+                
         // If itemId is provided, remove by itemId (more specific)
         // Otherwise use productId + color + size
         if (itemId) {
@@ -167,7 +162,6 @@ function App(): React.JSX.Element {
               itemToRemove.selectedSize
             );
           } else {
-            console.warn('⚠️ [App.tsx] Item not found with itemId:', itemId);
             // Fallback: try to remove by productId only
             await cartManager.removeItem(productId || itemId, selectedColor, selectedSize);
           }
@@ -200,10 +194,9 @@ function App(): React.JSX.Element {
           webViewRef.current.injectJavaScript(script);
         }
 
-        console.log('✅ [App.tsx] Item removed from cart. New count:', cart.count, 'Items:', cart.items.length);
         return { success: true, cart: cart.items };
       } catch (error) {
-        console.error('❌ [App.tsx] Error removing from cart:', error);
+        console.error('[App.tsx] Error removing from cart:', error);
         return { success: false, error: (error as Error).message };
       }
     });
@@ -240,7 +233,7 @@ function App(): React.JSX.Element {
         console.log('✅ [App.tsx] Cart quantity updated. New count:', cartManager.getItemCount());
         return { success: true, cart: cartManager.getItems() };
       } catch (error) {
-        console.error('❌ [App.tsx] Error updating cart quantity:', error);
+        console.error('[App.tsx] Error updating cart quantity:', error);
         return { success: false, error: (error as Error).message };
       }
     });
@@ -282,7 +275,7 @@ function App(): React.JSX.Element {
         webViewRef.current.injectJavaScript(script);
       }
 
-      console.log('✅ [App.tsx] Cart cleared');
+      console.log('[App.tsx] Cart cleared');
       return { success: true };
     });
 
@@ -432,59 +425,7 @@ function App(): React.JSX.Element {
   // Handle messages from WebView
   const handleMessage = useCallback(async (event: any) => {
     try {
-      console.log('📨 [App.tsx] Received raw message from WebView:', event.nativeEvent.data);
       const message = JSON.parse(event.nativeEvent.data);
-      console.log('📨 [App.tsx] Parsed message:', JSON.stringify(message, null, 2));
-
-      // Handle image error messages
-      if (message.type === 'imageError') {
-        console.error('❌ Image failed to load in WebView:', message.data.src);
-        return;
-      }
-
-      // Handle test message
-      if (message.type === 'test') {
-        console.log('🧪 Test message received from web app!', message.data);
-        return;
-      }
-
-      // Handle cart update notifications from web app
-      // Check both direct format {type: 'cartUpdated', data: {...}} and Mobile Bridge format {id, type, payload: {...}}
-      if (message.type === 'cartUpdated') {
-        console.log('🛒 [App.tsx] Cart update message detected!');
-        console.log('🛒 [App.tsx] Message structure:', {
-          hasId: !!message.id,
-          hasData: !!message.data,
-          hasPayload: !!message.payload,
-          type: message.type
-        });
-        
-        // Handle Mobile Bridge format (with payload)
-        const cartData = message.payload || message.data;
-        const count = cartData?.count ?? cartData?.items?.length ?? 0;
-        
-        if (typeof count === 'number' && count >= 0) {
-          console.log('✅ [App.tsx] Cart updated from web app! New count:', count);
-          console.log('✅ [App.tsx] Setting cartItemCount to:', count);
-          setCartItemCount(count);
-          console.log('✅ [App.tsx] cartItemCount state updated successfully');
-          
-          // Also sync with CartManager if available
-          const cartManager = CartManager.getInstance();
-          const currentCount = cartManager.getItemCount();
-          if (currentCount !== count) {
-            console.log('⚠️ [App.tsx] Cart count mismatch - WebView:', count, 'Native CartManager:', currentCount);
-          }
-        } else {
-          console.warn('⚠️ [App.tsx] Cart update message received but count is invalid:', {
-            count,
-            cartData,
-            messageData: message.data,
-            messagePayload: message.payload
-          });
-        }
-        return;
-      }
 
       // Handle Mobile Bridge messages
       console.log('Handling as Mobile Bridge message...');
@@ -502,7 +443,7 @@ function App(): React.JSX.Element {
         webViewRef.current.injectJavaScript(script);
       }
     } catch (error) {
-      console.error('❌ Error handling message:', error);
+      console.error('Error handling message:', error);
     }
   }, []);
 
@@ -529,7 +470,6 @@ function App(): React.JSX.Element {
     if (webViewRef.current) {
       const script = `
         (function() {
-          console.log('Native navigating to:', '${route}');
           window.location.hash = '${route}';
         })();
       `;
@@ -579,16 +519,13 @@ function App(): React.JSX.Element {
       },
     ];
     
-    console.log('📱 [App.tsx] Tabs configured:', tabItems.map(t => ({ id: t.id, badge: t.badge })));
     return tabItems;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItemCount]);
 
   // Debug: Log cart count changes
   useEffect(() => {
-    console.log('🛒 [App.tsx] Cart item count changed:', cartItemCount);
     const badge = cartItemCount > 0 ? cartItemCount.toString() : undefined;
-    console.log('🛒 [App.tsx] Cart tab badge will be:', badge);
   }, [cartItemCount]);
 
   // Simulate flash sale notification after user is authenticated
@@ -637,8 +574,6 @@ function App(): React.JSX.Element {
       </SafeAreaProvider>
     );
   }
-
-  console.log('[App] Rendering main app with WebView');
 
   // Mostrar app principal se autenticado
   return (

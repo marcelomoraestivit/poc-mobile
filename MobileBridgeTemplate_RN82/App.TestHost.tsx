@@ -16,18 +16,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 
 // Importa o componente Embedded do MobileBridge (com TabBar)
 import WebApp from './App.Embedded';
 import { AuthService } from './src/services/AuthService';
-import LoginScreen from './src/screens/LoginScreen'; // Regular LoginScreen (StyleSheet)
-// import LoginScreen from './src/screens/LoginScreen.DarkMode'; // New (Magic UI Dark Mode) - REQUIRES NativeWind
-// import HomeScreenDark from './src/screens/HomeScreen.DarkMode'; // REQUIRES NativeWind
-// import ProfileScreenDark from './src/screens/ProfileScreen.DarkMode'; // REQUIRES NativeWind
-// import SettingsScreenDark from './src/screens/SettingsScreen.DarkMode'; // REQUIRES NativeWind
+import LoginScreen from './src/screens/LoginScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { Logger } from './src/utils/Logger';
 
@@ -182,164 +180,40 @@ function App(): React.JSX.Element {
 
   Logger.log('[App.TestHost] Rendering MAIN APP - isAuthenticated:', isAuthenticated, 'currentScreen:', currentScreen);
 
-  // Tela Home - Simula a tela inicial do app host
-  const HomeScreen = () => {
-    Logger.log('[App.TestHost] Rendering HomeScreen');
-    return (
-      <ScrollView style={styles.screenContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.homeIcon}>🏠</Text>
-          <Text style={styles.title}>Bem-vindo ao App Host</Text>
-          <Text style={styles.subtitle}>
-            App React Native com MobileBridge integrado
-          </Text>
-        </View>
-
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={() => handleNavigateToScreen('webview')}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.buttonText}>Abrir WebView Embedded</Text>
-      </TouchableOpacity>
-
-    </ScrollView>
-    );
-  };
-
-  // Tela Profile - Simula perfil do usuário
-  const ProfileScreen = () => (
-    <ScrollView style={styles.screenContainer} showsVerticalScrollIndicator={false}>
-      <View style={styles.welcomeSection}>
-        <Text style={styles.homeIcon}>👤</Text>
-        <Text style={styles.title}>Perfil do Usuário</Text>
-        <Text style={styles.subtitle}>Tela nativa do app host</Text>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardIconEmoji}>📋</Text>
-          <Text style={styles.cardTitle}>Informações</Text>
-        </View>
-        <View style={styles.profileInfo}>
-          <View style={styles.profileItem}>
-            <Text style={styles.checkIcon}>👤</Text>
-            <View style={styles.profileItemContent}>
-              <Text style={styles.profileLabel}>Nome</Text>
-              <Text style={styles.profileValue}>Usuário de Teste</Text>
-            </View>
-          </View>
-          <View style={styles.profileItem}>
-            <Text style={styles.checkIcon}>📧</Text>
-            <View style={styles.profileItemContent}>
-              <Text style={styles.profileLabel}>Email</Text>
-              <Text style={styles.profileValue}>teste@exemplo.com</Text>
-            </View>
-          </View>
-          <View style={styles.profileItem}>
-            <Text style={styles.checkIcon}>ℹ️</Text>
-            <View style={styles.profileItemContent}>
-              <Text style={styles.profileLabel}>Versão</Text>
-              <Text style={styles.profileValue}>1.0.0</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => handleNavigateToScreen('webview')}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.buttonIcon}>🛒</Text>
-        <Text style={styles.buttonText}>Ver Loja (WebView)</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-
-  // Tela Settings - Simula configurações
-  const SettingsScreen = () => {
-    const user = AuthService.getCurrentUser();
-
-    return (
-      <ScrollView style={styles.screenContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.homeIcon}>⚙️</Text>
-          <Text style={styles.title}>Configurações</Text>
-          <Text style={styles.subtitle}>Tela nativa de configurações</Text>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIconEmoji}>👤</Text>
-            <Text style={styles.cardTitle}>Usuário</Text>
-          </View>
-          <View style={styles.userInfo}>
-            <Text style={styles.userEmail}>{user?.email || 'Não autenticado'}</Text>
-            <Text style={styles.userRole}>{user?.role || 'Sem permissão'}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIconEmoji}>🔔</Text>
-            <Text style={styles.cardTitle}>Notificações</Text>
-          </View>
-          <View style={styles.settingItem}>
-            <Text style={styles.settingText}>Push Notifications</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Ativado</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIconEmoji}>🎨</Text>
-            <Text style={styles.cardTitle}>Aparência</Text>
-          </View>
-          <View style={styles.settingItem}>
-            <Text style={styles.settingText}>Tema</Text>
-            <View style={[styles.badge, styles.badgeLight]}>
-              <Text style={styles.badgeLightText}>Claro</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardIconEmoji}>ℹ️</Text>
-            <Text style={styles.cardTitle}>Sobre o WebView</Text>
-          </View>
-          <Text style={styles.cardText}>
-            O WebView embedded está configurado para ocupar toda a tela quando ativo,
-            mantendo o estado preservado durante a navegação.
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.buttonIcon}>🚪</Text>
-          <Text style={styles.buttonText}>Sair da Conta</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    );
-  };
-
-  // Renderiza a tela atual (APENAS telas nativas)
+  // Renderiza a tela atual (APENAS telas nativas) usando componentes importados
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
-        return <HomeScreen />;
+        Logger.log('[App.TestHost] Rendering HomeScreen');
+        return (
+          <HomeScreen
+            onNavigate={handleNavigateToScreen}
+            onLogout={handleLogout}
+          />
+        );
       case 'profile':
-        return <ProfileScreen />;
+        Logger.log('[App.TestHost] Rendering ProfileScreen');
+        return (
+          <ProfileScreen
+            onBack={() => handleNavigateToScreen('home')}
+            onNavigateToWebView={() => handleNavigateToScreen('webview')}
+          />
+        );
       case 'settings':
-        return <SettingsScreen />;
+        Logger.log('[App.TestHost] Rendering SettingsScreen');
+        return (
+          <SettingsScreen
+            onBack={() => handleNavigateToScreen('home')}
+            onLogout={handleLogout}
+          />
+        );
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen
+            onNavigate={handleNavigateToScreen}
+            onLogout={handleLogout}
+          />
+        );
     }
   };
 
@@ -351,7 +225,7 @@ function App(): React.JSX.Element {
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
         {/* Conteúdo das telas nativas - esconde quando WebView ativo */}
-        {/* Usando telas internas definidas no próprio App.TestHost (HomeScreen, ProfileScreen, SettingsScreen) */}
+        {/* Usando telas separadas importadas de src/screens/ (HomeScreen, ProfileScreen, SettingsScreen) */}
         {currentScreen !== 'webview' && (
           <View style={styles.content}>
             {renderScreen()}
@@ -463,222 +337,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  screenContainer: {
-    flex: 1,
-    padding: 20,
-  },
-
-  // Welcome Section
-  welcomeSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-    paddingVertical: 16,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginTop: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-
-  // Info Box
-  infoBox: {
-    backgroundColor: COLORS.primaryLight,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  infoTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  infoText: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 22,
-  },
-
-  // Card
-  card: {
-    backgroundColor: COLORS.white,
-    padding: 18,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  cardText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-  },
-
-  // Feature List
-  featureList: {
-    gap: 12,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featureText: {
-    fontSize: 14,
-    color: COLORS.text,
-    flex: 1,
-  },
-
-  // Profile Info
-  profileInfo: {
-    gap: 16,
-  },
-  profileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  profileItemContent: {
-    flex: 1,
-  },
-  profileLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
-  },
-  profileValue: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-
-  // User Info
-  userInfo: {
-    gap: 8,
-    paddingTop: 8,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  userRole: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textTransform: 'capitalize',
-  },
-
-  // Settings
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  settingText: {
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-
-  // Badges
-  badge: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  badgeLight: {
-    backgroundColor: COLORS.primaryLight,
-  },
-  badgeLightText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-
-  // Buttons
-  primaryButton: {
-    backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 16,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  secondaryButton: {
-    backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 16,
-  },
-  logoutButton: {
-    backgroundColor: '#C92A2A',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 24,
-    marginBottom: 32,
-    shadowColor: '#C92A2A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  buttonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
 
   // Bottom Navigation
   bottomNav: {
@@ -785,25 +443,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Emoji Icons
-  homeIcon: {
-    fontSize: 48,
-  },
-  headerIcon: {
-    fontSize: 16,
-  },
-  infoIconEmoji: {
-    fontSize: 24,
-  },
-  buttonIcon: {
-    fontSize: 24,
-  },
-  cardIconEmoji: {
-    fontSize: 24,
-  },
-  checkIcon: {
-    fontSize: 20,
-  },
+  // Navigation Icons
   navIcon: {
     fontSize: 24,
   },

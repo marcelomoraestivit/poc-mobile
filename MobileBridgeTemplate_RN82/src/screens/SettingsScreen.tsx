@@ -129,7 +129,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onLogout }) => 
             onPress={onLogout}
             activeOpacity={0.7}
           >
-            <Text style={styles.ghostButtonText}>🚪 Sair da Conta</Text>
+            <Text style={styles.ghostButtonText}>Sair da Conta</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

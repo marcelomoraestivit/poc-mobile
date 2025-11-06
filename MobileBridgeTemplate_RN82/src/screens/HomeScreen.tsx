@@ -35,7 +35,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, onLogout }) => {
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Bem-vindo! 👋</Text>
+          <Text style={styles.title}>Bem-vindo!</Text>
           <Text style={styles.subtitle}>Escolha uma opção abaixo</Text>
         </View>
 
@@ -105,7 +105,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate, onLogout }) => {
           onPress={onLogout}
           activeOpacity={0.7}
         >
-          <Text style={styles.logoutButtonText}>🚪 Sair</Text>
+          <Text style={styles.ghostButtonText}>Sair da Conta</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -208,6 +208,11 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoutButtonText: {
+    color: COLORS.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  ghostButtonText: {
     color: COLORS.textSecondary,
     fontSize: 16,
     fontWeight: '600',

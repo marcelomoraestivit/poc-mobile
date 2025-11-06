@@ -52,7 +52,6 @@ class MobileBridge {
   async handleMessage(message: BridgeMessage): Promise<BridgeResponse> {
     // Basic structure validation before security checks
     if (!message || typeof message !== 'object') {
-      console.error('[Bridge] Invalid message structure: not an object');
       return {
         id: 'unknown',
         success: false,
@@ -62,7 +61,6 @@ class MobileBridge {
     }
 
     if (!message.id || !message.type) {
-      console.error('[Bridge] Invalid message: Missing required fields (id, type)');
       return {
         id: message.id || 'unknown',
         success: false,
@@ -74,7 +72,6 @@ class MobileBridge {
     // Validate message structure and security
     const validation = BridgeSecurity.validateMessage(message);
     if (!validation.valid) {
-      console.error('[Bridge] Invalid message:', validation.error);
       return {
         id: message.id,
         success: false,
@@ -85,7 +82,6 @@ class MobileBridge {
 
     // Check rate limit
     if (!BridgeSecurity.checkRateLimit(message.type)) {
-      console.warn('[Bridge] Rate limit exceeded for:', message.type);
       return {
         id: message.id,
         success: false,

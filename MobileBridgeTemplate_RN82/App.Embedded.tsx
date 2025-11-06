@@ -31,16 +31,12 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [cartItemCount, setCartItemCountRaw] = useState(() => {
-    console.log('🎬 [Embedded] Initial cartItemCount state');
     return 0;
   });
 
   // Wrapped setState with logging to catch ALL updates
   const setCartItemCount = useCallback((value: number | ((prev: number) => number)) => {
     const newValue = typeof value === 'function' ? value(cartItemCount) : value;
-    console.error('🚨🚨🚨 setCartItemCount CALLED with:', newValue);
-    console.error('🚨 Previous value was:', cartItemCount);
-    console.trace('🚨 STACK TRACE:');
     setCartItemCountRaw(newValue);
   }, [cartItemCount]);
   const [notificationShown, setNotificationShown] = useState(false);
@@ -50,18 +46,13 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
 
   // Track all cartItemCount changes
   useEffect(() => {
-    console.log('🔄 [Embedded] cartItemCount STATE CHANGED TO:', cartItemCount);
-    console.trace('Stack trace for cartItemCount change');
   }, [cartItemCount]);
 
   // Safe function to update cart count - validates before setting
   const updateCartCountSafely = useCallback((newCount: number, source: string) => {
-    console.log(`🛡️ [Embedded] updateCartCountSafely called - newCount: ${newCount}, source: ${source}`);
-    console.log(`🛡️ [Embedded] Current state: ${cartItemCount}, lastValid: ${lastValidCartCount.current}`);
 
     // Special handling: WebView is the source of truth for cart in embedded mode
     if (source === 'WebView.cartUpdated') {
-      console.log(`✅ [Embedded] ACCEPTED count=${newCount} from WebView (source of truth)`);
       setCartItemCount(newCount);
       lastValidCartCount.current = newCount;
       return;
@@ -69,14 +60,11 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
 
     // For other sources, check if we should use lastValid instead
     if (newCount === 0 && lastValidCartCount.current > 0) {
-      console.warn(`⚠️ [Embedded] REJECTED count=0 from ${source} - lastValid was ${lastValidCartCount.current}`);
-      console.warn(`⚠️ [Embedded] Keeping lastValid count: ${lastValidCartCount.current}`);
       setCartItemCount(lastValidCartCount.current);
       return;
     }
 
     // Otherwise accept the new count
-    console.log(`✅ [Embedded] ACCEPTED count=${newCount} from ${source}`);
     setCartItemCount(newCount);
     if (newCount > 0) {
       lastValidCartCount.current = newCount;
@@ -92,23 +80,16 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     // Update cart count when cart changes
     const updateCartCount = () => {
       const count = cartManager.getItemCount();
-      console.log('📢 [Embedded] updateCartCount called - count:', count);
       updateCartCountSafely(count, 'CartManager.subscribe');
 
-      // Notify WebView about cart count change
-      // This ensures the TabBar inside WebView stays in sync
-      if (webViewRef.current && count >= 0) {
-        try {
-          bridge.sendToWeb(webViewRef, 'cartCountUpdated', { count });
-        } catch (error) {
-          console.warn('[Embedded] Failed to notify web about cart count:', error);
-        }
-      }
+      // Note: We don't send cartCountUpdated back to WebView because:
+      // - WebView manages its own cart state
+      // - WebView sends cartUpdated to us when it changes
+      // - We just display the count in the native TabBar
     };
 
     // Initial cart count update with delay to ensure cart is loaded
     const initialTimer = setTimeout(() => {
-      console.log('📢 [Embedded] Initial cart count update...');
       updateCartCount();
     }, 200);
 
@@ -117,7 +98,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     // Navigation handler - navigate React web app via hash router
     bridge.registerHandler('navigate', async (payload) => {
       const { page, params } = payload;
-      console.log('[Embedded] Navigate to:', page, params);
 
       // Map page names to routes
       const routeMap: Record<string, string> = {
@@ -146,7 +126,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
       if (webViewRef.current) {
         const script = `
           (function() {
-            console.log('Bridge navigating to:', '${route}');
             window.location.hash = '${route}';
           })();
         `;
@@ -159,9 +138,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     // Cart handlers
     bridge.registerHandler('addToCart', async (payload) => {
       try {
-        console.error('🛒🛒🛒 addToCart HANDLER CALLED!');
-        console.error('🛒 Product:', payload.product?.name, 'Qty:', payload.quantity);
-        console.trace('🛒 Stack trace for addToCart:');
         const { product, quantity, selectedColor, selectedSize } = payload;
         await cartManager.addItem(product, quantity, selectedColor, selectedSize);
 
@@ -204,11 +180,9 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
           message: `${product.name} foi adicionado ao carrinho`,
           type: 'success'
         });
-
-        console.log('✅ [Embedded] Item added to cart. New count:', cart.count);
         return { success: true, cart: cartManager.getItems() };
       } catch (error: any) {
-        console.error('❌ [Embedded] Error adding to cart:', error);
+        console.error(' [Embedded] Error adding to cart:', error);
         return { success: false, error: error.message };
       }
     });
@@ -216,9 +190,7 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     bridge.registerHandler('removeFromCart', async (payload) => {
       try {
         const { productId, selectedColor, selectedSize, itemId } = payload;
-        
-        console.log('🛒 [Embedded] Removing item from cart:', { productId, selectedColor, selectedSize, itemId });
-        
+                
         // If itemId is provided, remove by itemId (more specific)
         // Otherwise use productId + color + size
         if (itemId) {
@@ -231,7 +203,7 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
               itemToRemove.selectedSize
             );
           } else {
-            console.warn('⚠️ [Embedded] Item not found with itemId:', itemId);
+            console.warn(' [Embedded] Item not found with itemId:', itemId);
             await cartManager.removeItem(productId || itemId, selectedColor, selectedSize);
           }
         } else {
@@ -262,7 +234,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
           webViewRef.current.injectJavaScript(script);
         }
 
-        console.log('✅ [Embedded] Item removed from cart. New count:', cart.count);
         return { success: true, cart: cart.items };
       } catch (error: any) {
         console.error('❌ [Embedded] Error removing from cart:', error);
@@ -299,10 +270,9 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
           webViewRef.current.injectJavaScript(script);
         }
 
-        console.log('✅ [Embedded] Cart quantity updated. New count:', cart.count);
         return { success: true, cart: cart.items };
       } catch (error: any) {
-        console.error('❌ [Embedded] Error updating cart quantity:', error);
+        console.error('[Embedded] Error updating cart quantity:', error);
         return { success: false, error: error.message };
       }
     });
@@ -316,8 +286,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     });
 
     bridge.registerHandler('clearCart', async () => {
-      console.error('🗑️🗑️🗑️ clearCart HANDLER CALLED - About to clear cart!');
-      console.trace('🗑️ STACK TRACE for clearCart:');
       await cartManager.clear();
 
       // Notify web about cart update
@@ -343,8 +311,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
         `;
         webViewRef.current.injectJavaScript(script);
       }
-
-      console.log('✅ [Embedded] Cart cleared');
       return { success: true };
     });
 
@@ -411,53 +377,31 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
   // Handle messages from WebView (custom messages like cartUpdated)
   const handleMessage = useCallback(async (event: any) => {
     try {
-      console.log('📨 [Embedded] Received raw message from WebView:', event.nativeEvent.data);
       const message = JSON.parse(event.nativeEvent.data);
-      console.log('📨 [Embedded] Parsed message:', JSON.stringify(message, null, 2));
-      
+
       // Handle cart update notifications from web app
       // Check both direct format {type: 'cartUpdated', data: {...}} and Mobile Bridge format {id, type, payload: {...}}
       if (message.type === 'cartUpdated') {
-        console.log('🛒 [Embedded] Cart update message detected!');
-        console.log('🛒 [Embedded] Message structure:', {
-          hasId: !!message.id,
-          hasData: !!message.data,
-          hasPayload: !!message.payload,
-          type: message.type
-        });
         
         // Handle Mobile Bridge format (with payload) or direct format (with data)
         const cartData = message.payload || message.data;
         const count = cartData?.count ?? cartData?.items?.length ?? 0;
 
         if (typeof count === 'number' && count >= 0) {
-          console.log('✅ [Embedded] Cart updated from web app! New count:', count);
 
           // Verify with CartManager before accepting the count
           const cartManager = CartManager.getInstance();
           const currentCount = cartManager.getItemCount();
-          console.log('🔍 [Embedded] Verifying cart count - WebView says:', count, 'CartManager says:', currentCount);
 
           // Use safe update function
           updateCartCountSafely(count, 'WebView.cartUpdated');
-
-          if (currentCount !== count) {
-            console.log('⚠️ [Embedded] Cart count mismatch - WebView:', count, 'Native CartManager:', currentCount);
-          }
-        } else {
-          console.warn('⚠️ [Embedded] Cart update message received but count is invalid:', {
-            count,
-            cartData,
-            messageData: message.data,
-            messagePayload: message.payload
-          });
         }
         return;
       }
 
       // Handle other custom messages here if needed
     } catch (error) {
-      console.error('❌ [Embedded] Error handling message:', error);
+      console.error('[Embedded] Error handling message:', error);
     }
   }, [updateCartCountSafely]);
 
@@ -527,16 +471,13 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
       },
     ];
 
-    console.log('📱 [Embedded] Tabs configured:', tabItems.map(t => ({ id: t.id, badge: t.badge })));
     return tabItems;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItemCount]);
 
   // Debug: Log cart count changes
   useEffect(() => {
-    console.log('🛒 [Embedded] Cart item count changed:', cartItemCount);
     const badge = cartItemCount > 0 ? cartItemCount.toString() : undefined;
-    console.log('🛒 [Embedded] Cart tab badge will be:', badge);
   }, [cartItemCount]);
 
   // Sync cart count when component becomes visible (iOS fix)
@@ -546,8 +487,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
       const timer = setTimeout(() => {
         const cartManager = CartManager.getInstance();
         const currentCount = cartManager.getItemCount();
-        console.log('🔄 [Embedded] WebView became visible - syncing cart count:', currentCount);
-        console.log('🔄 [Embedded] Current state cartItemCount before update:', cartItemCount);
 
         // Use safe update function
         updateCartCountSafely(currentCount, 'isVisible.sync');
@@ -564,7 +503,6 @@ function App({ isVisible = true }: AppEmbeddedProps = {}): React.JSX.Element {
     if (isVisible && !notificationShown) {
       const notificationService = NotificationService.getInstance();
       const timer = setTimeout(() => {
-        console.log('[Embedded] Triggering flash sale notification (first time only)...');
         notificationService.simulateFlashSaleNotification();
         setNotificationShown(true); // Mark as shown so it won't trigger again
       }, 5000);

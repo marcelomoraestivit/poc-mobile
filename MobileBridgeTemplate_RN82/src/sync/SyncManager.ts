@@ -39,7 +39,6 @@ class SyncManager {
    * Handle network status changes
    */
   private handleNetworkChange = (isConnected: boolean): void => {
-    console.log('Network changed, connected:', isConnected);
 
     if (isConnected && this.autoSyncEnabled) {
       // Auto-sync when connection is restored
@@ -64,14 +63,12 @@ class SyncManager {
     if (options?.useCache && options?.cacheKey) {
       const cached = await OfflineStorage.getCachedData(options.cacheKey);
       if (cached !== null) {
-        console.log('Returning cached data for:', options.cacheKey);
         return cached as T;
       }
     }
 
     // If offline, queue the action and return cached data or throw
     if (!NetworkManager.isConnected()) {
-      console.log('Offline: Queuing action', actionType);
       await OfflineStorage.queueAction(actionType, payload);
 
       // Return cached data if available
@@ -104,7 +101,6 @@ class SyncManager {
       if (options?.cacheKey) {
         const cached = await OfflineStorage.getCachedData(options.cacheKey);
         if (cached !== null) {
-          console.log('Execution failed, returning cached data');
           return cached as T;
         }
       }
@@ -132,13 +128,11 @@ class SyncManager {
 
     try {
       const actions = await OfflineStorage.getPendingActions();
-      console.log(`Starting sync of ${actions.length} pending actions`);
 
       for (const action of actions) {
         try {
           // Skip if max retries exceeded
           if (action.retryCount >= this.maxRetries) {
-            console.log(`Max retries exceeded for action ${action.id}`);
             await OfflineStorage.removeAction(action.id);
             continue;
           }
@@ -153,8 +147,6 @@ class SyncManager {
           // Success: remove from queue
           await OfflineStorage.removeAction(action.id);
           syncedCount++;
-
-          console.log(`Synced action ${action.id}`);
         } catch (error) {
           console.error(`Failed to sync action ${action.id}:`, error);
 
@@ -163,7 +155,6 @@ class SyncManager {
         }
       }
 
-      console.log(`Sync completed: ${syncedCount}/${actions.length} synced`);
       this.notifySyncCallbacks(true, syncedCount);
     } catch (error) {
       console.error('Sync error:', error);

@@ -30,22 +30,13 @@ const TabBar: React.FC<TabBarProps> = ({ tabs, activeTabId }) => {
 
   // Debug: Log badge values
   React.useEffect(() => {
-    console.log('📊 [TabBar] Component mounted/updated');
-    console.log('📊 [TabBar] Tabs received:', tabs.length);
-    console.log('📊 [TabBar] Active tab:', activeTabId);
-    const cartTab = tabs.find(tab => tab.id === 'cart');
-    if (cartTab) {
-      console.log('📊 [TabBar] Cart tab badge value:', cartTab.badge);
-      console.log('📊 [TabBar] All tabs:', tabs.map(t => ({ id: t.id, badge: t.badge, label: t.label })));
-    }
   }, [tabs, activeTabId]);
 
   if (!tabs || tabs.length === 0) {
-    console.warn('⚠️ [TabBar] No tabs provided!');
+    console.warn('[TabBar] No tabs provided!');
     return null;
   }
 
-  console.log('📊 [TabBar] Rendering TabBar with', tabs.length, 'tabs');
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       {tabs.map((tab) => {
