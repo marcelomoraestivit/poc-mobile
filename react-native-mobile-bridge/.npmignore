@@ -1,0 +1,21 @@
+# Source files
+src/
+
+# Config files
+tsconfig.json
+.eslintrc.js
+.prettierrc.js
+
+# Development
+.vscode/
+.idea/
+*.test.ts
+*.test.tsx
+__tests__/
+
+# Git
+.git/
+.gitignore
+
+# CI
+.github/

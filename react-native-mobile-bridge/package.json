@@ -1,0 +1,49 @@
+{
+  "name": "react-native-mobile-bridge",
+  "version": "1.0.0",
+  "description": "A powerful React Native library for seamless communication between WebView and native code with offline support, data sync, and security features",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "jest",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "keywords": [
+    "react-native",
+    "webview",
+    "bridge",
+    "mobile-bridge",
+    "offline",
+    "sync",
+    "storage"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-native": ">=0.60.0",
+    "react-native-webview": ">=11.0.0"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-native-community/netinfo": "^11.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.6",
+    "@types/react-native": "^0.74.0",
+    "typescript": "^5.0.4",
+    "eslint": "^8.19.0",
+    "@typescript-eslint/eslint-plugin": "^5.30.0",
+    "@typescript-eslint/parser": "^5.30.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/react-native-mobile-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/react-native-mobile-bridge/issues"
+  },
+  "homepage": "https://github.com/yourusername/react-native-mobile-bridge#readme"
+}
