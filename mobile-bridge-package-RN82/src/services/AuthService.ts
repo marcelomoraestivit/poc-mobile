@@ -8,7 +8,7 @@
  * npm install react-native-biometrics
  */
 
-import { SecureStorage } from '../storage/SecureStorage';
+import { SecureStorage } from 'react-native-mobile-bridge';
 import { JWTGenerator } from '../utils/JWTGenerator';
 import { Logger } from '../utils/Logger';
 

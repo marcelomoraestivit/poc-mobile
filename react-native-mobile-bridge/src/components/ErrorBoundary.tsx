@@ -5,7 +5,6 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, Button, StyleSheet, ScrollView } from 'react-native';
-import ErrorLogger, { ErrorSeverity } from '../services/ErrorLogger';
 
 interface Props {
   children: ReactNode;
@@ -31,14 +30,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error with context
-    ErrorLogger.critical(error, {
-      component: 'ErrorBoundary',
-      action: 'componentDidCatch',
-      metadata: {
-        componentStack: errorInfo.componentStack,
-      },
-    });
+    // Log error to console in development
+    if (__DEV__) {
+      console.error('Error caught by ErrorBoundary:', error, errorInfo);
+    }
 
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo);
@@ -72,14 +67,16 @@ export class ErrorBoundary extends Component<Props, State> {
             <Text style={styles.title}>Ops! Algo deu errado</Text>
 
             <Text style={styles.message}>
-              {ErrorLogger.getUserMessage(this.state.error!)}
+              {this.state.error?.message || 'Ocorreu um erro inesperado. Por favor, tente novamente.'}
             </Text>
 
             {__DEV__ && this.state.error && (
               <ScrollView style={styles.debugContainer}>
                 <Text style={styles.debugTitle}>Debug Info:</Text>
                 <Text style={styles.debugText}>
-                  {ErrorLogger.formatError(this.state.error, true)}
+                  {this.state.error.toString()}
+                  {'\n'}
+                  {this.state.error.stack}
                 </Text>
                 {this.state.errorInfo && (
                   <>

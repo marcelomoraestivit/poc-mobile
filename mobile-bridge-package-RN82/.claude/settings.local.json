@@ -10,7 +10,12 @@
       "Bash(cmd.exe /c \"adb logcat -t 30 | findstr /i \"\"ReactNativeJS\"\"\")",
       "Bash(cmd.exe /c \"adb logcat -t 50 | findstr /i \"\"ReactNativeJS\"\"\")",
       "Bash(cmd.exe /c \"adb shell input keyevent 82 && timeout /t 2 >nul && adb shell input text r && adb shell input text r\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(npm run build:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": [],
     "ask": []

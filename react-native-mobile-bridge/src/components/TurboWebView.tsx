@@ -4,8 +4,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import { WebView, WebViewMessageEvent, WebViewErrorEvent } from 'react-native-webview';
+import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import type { WebViewProps } from 'react-native-webview';
+
+// Define WebViewErrorEvent type if not exported
+type WebViewErrorEvent = any;
 import MobileBridge, { BridgeMessage, BridgeResponse } from '../bridge/MobileBridge';
 import SyncManager from '../sync/SyncManager';
 import NetworkManager from '../network/NetworkManager';
@@ -17,15 +20,21 @@ import 'react-native-url-polyfill/auto';
 interface TurboWebViewProps {
   source: WebViewProps['source'];
   onLoad?: () => void;
-  onError?: (event: WebViewErrorEvent) => void;
+  onLoadStart?: () => void;
+  onLoadEnd?: () => void;
+  onError?: (event: any) => void;
+  onHttpError?: (event: any) => void;
   onNavigationChange?: (url: string) => void;
-  onMessage?: (event: WebViewMessageEvent) => void;
+  onMessage?: (event: any) => void;
 }
 
 const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
   source,
   onLoad,
+  onLoadStart,
+  onLoadEnd,
   onError,
+  onHttpError,
   onNavigationChange,
   onMessage: onMessageProp,
 }, forwardedRef) => {
@@ -314,7 +323,7 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
       onMessage={handleMessage}
       onLoad={onLoad}
       onError={onError}
-      onNavigationStateChange={(navState) => {
+      onNavigationStateChange={(navState: any) => {
         setCurrentUrl(navState.url);
         if (onNavigationChange) {
           onNavigationChange(navState.url);
@@ -331,7 +340,6 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
       mediaPlaybackRequiresUserAction={false}
       cacheEnabled={true}
       cacheMode="LOAD_DEFAULT"
-      androidHardwareAccelerationDisabled={false}
       androidLayerType="hardware"
       overScrollMode="never"
       thirdPartyCookiesEnabled={true}

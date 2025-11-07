@@ -1,4 +1,4 @@
-import { SecureStorage } from '../storage/SecureStorage';
+import { SecureStorage } from 'react-native-mobile-bridge';
 import { CartItem, Product } from '../types';
 
 const CART_STORAGE_KEY = '@ecommerce_cart';
