@@ -22,7 +22,7 @@ target 'MobileBridgeApp' do
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     # Hermes is now enabled by default. Disable by setting this flag to false.
-    :hermes_enabled => flags[:hermes_enabled]
+    :hermes_enabled => true
   )
 
   post_install do |installer|
