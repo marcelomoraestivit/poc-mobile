@@ -322,7 +322,10 @@ const TurboWebView = React.forwardRef<WebView, TurboWebViewProps>(({
       style={styles.webview}
       onMessage={handleMessage}
       onLoad={onLoad}
+      onLoadStart={onLoadStart}
+      onLoadEnd={onLoadEnd}
       onError={onError}
+      onHttpError={onHttpError}
       onNavigationStateChange={(navState: any) => {
         setCurrentUrl(navState.url);
         if (onNavigationChange) {

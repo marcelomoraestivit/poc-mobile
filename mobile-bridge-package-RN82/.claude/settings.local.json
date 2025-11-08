@@ -15,7 +15,11 @@
       "Bash(npm view:*)",
       "Bash(npm run build:*)",
       "Bash(node -e:*)",
-      "Bash(npm run typecheck:*)"
+      "Bash(npm run typecheck:*)",
+      "Bash(cmd.exe /c \"adb reverse tcp:8081 tcp:8081\")",
+      "Bash(npm start -- --reset-cache)",
+      "Bash(npx react-native run-android)",
+      "Bash(npx react-native start --reset-cache)"
     ],
     "deny": [],
     "ask": []
